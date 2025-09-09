@@ -1,0 +1,38 @@
+# === CONFIGURACIÓN DE POLÍTICAS DE LÍMITE ===
+
+# Parámetros financieros
+currency: "PEN"
+interest_rate_anual: 0.30
+tenor_meses: 36
+
+# Política de PTI
+pti_max: 0.35
+
+# Límite base y cuantización
+step_cuantizacion: 500
+min_limit: 2000
+gamma_riesgo: 1.0
+
+# Bandas de riesgo
+bandas_pd:
+  low: "0.0-0.09"
+  medium: "0.09-0.16"
+  high: "0.16-1.0"
+
+clusters:
+  0:
+    pti_max: 0.35
+    cap_base: 20000
+    max_limit: 60000
+  1:
+    pti_max: 0.30
+    cap_base: 15000
+    max_limit: 40000
+  2:
+    pti_max: 0.25
+    cap_base: 10000
+    max_limit: 25000
+  3:
+    pti_max: 0.20
+    cap_base: 8000
+    max_limit: 15000
