@@ -10,10 +10,14 @@ from dotenv import load_dotenv
 load_dotenv()
 #client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-#api_key = st.secrets.get("OPENAI_API_KEY", os.getenv("OPENAI_API_KEY"))
-#client = OpenAI(api_key=api_key)
+# Buscar primero en Streamlit Secrets, luego en variables de entorno
+api_key = st.secrets.get("OPENAI_API_KEY", os.getenv("OPENAI_API_KEY"))
 
-client = st.secrets.get("OPENAI_API_KEY", os.getenv("OPENAI_API_KEY"))
+if not api_key:
+    st.error("❌ No se encontró OPENAI_API_KEY. Configúrala en .env (local) o en Streamlit Secrets (cloud).")
+    client = None
+else:
+    client = OpenAI(api_key=api_key)
 
 # === CARGA DE CONFIGURACIÓN ===
 CFG = yaml.safe_load(open("configs/config.yaml"))
@@ -58,6 +62,10 @@ def get_banda(pdv: float) -> str:
     return f">{bandas[-1]['max_pd']}"
 
 def build_explanation_llm(audiencia, pd, banda, cluster, limit_aff, limit_risk, limit_final, currency, top_factors):
+
+    if client is None:
+        return "[Error en generación con LLM: API key no configurada]"
+
     if audiencia == "cliente":
         prompt = f"""
         Eres un asistente financiero que explica evaluaciones de riesgo crediticio a un cliente.
