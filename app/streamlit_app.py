@@ -9,7 +9,8 @@ from dotenv import load_dotenv
 # === CONFIGURACIÓN OPENAI ===
 load_dotenv()
 #client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-client = os.getenv("OPENAI_API_KEY", st.secrets.get("OPENAI_API_KEY", None))
+api_key = st.secrets.get("OPENAI_API_KEY", os.getenv("OPENAI_API_KEY"))
+client = OpenAI(api_key=api_key)
 
 # === CARGA DE CONFIGURACIÓN ===
 CFG = yaml.safe_load(open("configs/config.yaml"))
