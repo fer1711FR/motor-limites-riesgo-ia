@@ -57,40 +57,54 @@ def get_banda(pdv: float) -> str:
     return f">{bandas[-1]['max_pd']}"
 
 def build_explanation_llm(audiencia, pd, banda, cluster, limit_aff, limit_risk, limit_final, currency, top_factors):
+    def fm(x, cur):
+        try:
+            return f"{x:,.0f} {cur or ''}".strip()
+        except Exception:
+            return f"{x} {cur or ''}".strip()
+
+    pd_pct = f"{pd:.1%}"
+    factors_txt = ", ".join((top_factors or [])[:3]) or "ingresos y deuda"
+
     if audiencia == "cliente":
-        prompt = f"""
-        Eres un asistente financiero que explica evaluaciones de riesgo crediticio a un cliente.
+        system_msg = (
+            "Eres un asesor financiero. Sé claro, directo y amable. "
+            "Responde SOLO con 3–4 viñetas y una última línea de recomendación. "
+            "Sin títulos, sin párrafos largos."
+        )
+        user_msg = f"""
+PD: {pd_pct} (riesgo: {banda}). Cluster: {cluster}.
+Límite por capacidad: {fm(limit_aff, currency)}. Límite por riesgo: {fm(limit_risk, currency)}.
+Límite recomendado: {fm(limit_final, currency)}.
+Factores principales: {factors_txt}.
 
-        Explica en lenguaje sencillo y tranquilizador:
-        - Probabilidad de incumplimiento: {pd:.2%}
-        - Nivel de riesgo: {banda}
-        - Cluster asignado: {cluster}
-        - Límite calculado por capacidad de pago: {limit_aff:,.0f} {currency}
-        - Límite calculado por riesgo: {limit_risk:,.0f} {currency}
-        - Límite final recomendado: {limit_final:,.0f} {currency}
-        - Factores más influyentes: {', '.join(top_factors)}
-        """
+Entrega: 3–4 viñetas + 1 línea final de recomendación.
+"""
     else:  # analista
-        prompt = f"""
-        Eres un asistente financiero que explica evaluaciones de riesgo crediticio a un analista técnico.
+        system_msg = (
+            "Eres un analista de riesgo. Responde en viñetas compactas (máx. 6), "
+            "sin introducción ni cierre. Incluye justificación breve y referencia a fórmula."
+        )
+        user_msg = f"""
+PD={pd_pct} (banda={banda}); cluster={cluster}.
+limit_aff={fm(limit_aff, currency)} (pago_max/AF), limit_risk={fm(limit_risk, currency)} (cap_base*mult*(1-PD)^γ).
+limit_final=min(limit_aff, limit_risk) con cuantización y topes → {fm(limit_final, currency)}.
+Drivers: {factors_txt}.
 
-        Proporciona una explicación detallada y técnica, con detalles del cálculo y justificación
-        - Probabilidad de incumplimiento: {pd:.2%}
-        - Nivel de riesgo: {banda}
-        - Cluster asignado: {cluster}
-        - Límite calculado por capacidad de pago: {limit_aff:,.0f} {currency}
-        - Límite calculado por riesgo: {limit_risk:,.0f} {currency}
-        - Límite final recomendado: {limit_final:,.0f} {currency}
-        - Factores más influyentes: {', '.join(top_factors)}
-        """
+Entrega: hasta 6 viñetas concisas.
+"""
 
     try:
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",  # o "gpt-5"
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.7,
+        resp = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": system_msg},
+                {"role": "user", "content": user_msg},
+            ],
+            temperature=0.3,
+            max_tokens=220,  # limita el tamaño
         )
-        return response.choices[0].message.content
+        return resp.choices[0].message.content
     except Exception as e:
         return f"[Error en generación con LLM: {e}]"
 
